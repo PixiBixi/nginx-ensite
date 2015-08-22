@@ -1,6 +1,6 @@
-# nginx_ensite
+# nginx-ensite
 
-Ce script à pour but de faire un equivalent à a2ensite de nginx
+Ce script à pour but de faire un equivalent à a2ensite de nginx.
 
 ## Utilisation
 
@@ -8,11 +8,11 @@ Ce script à pour but de faire un equivalent à a2ensite de nginx
 
 * enable : Active un server block de nginx
 * disable : Desactive un server block de nginx
-* list : Liste les servers blocks de nginx disponible dans vos dossiers sites-available et sites-enabled
+* list : Liste les servers blocks de nginx disponibles dans vos dossiers sites-available et sites-enabled
 
 Je vous conseille de mettre directement le script dans un dossier de **$PATH** afin d'éviter d'écrire bash... à chaque fois.
 
-Par défaut, le dossier **/usr/bin** fait partie de la variable $PATH
+Par défaut, le dossier **/usr/bin** fait partie de la variable $PATH.
 
 Je vous conseille également de le renommer sans le .sh, ce qui est plus "propre" si vous mettez le script dans votre **$PATH**
 
@@ -23,10 +23,11 @@ Je veux :
 * Désactiver mon server block test.conf : "nginx-ensite disable test.conf"
 * Lister tous mes server blocks : "nginx-ensite list"
  
-A chaque fois que vous activez ou désactivez un site, un redémarrage de nginx est fait automatiquement
+A chaque fois que vous activez ou désactivez un server block un redémarrage de nginx est fait automatiquement.
 
-Si vous utilisez systemd, vous devrez probablement changer la variable SERVICE en début de script
+**Si vous utilisez systemd**, vous devrez probablement changer la variable SERVICE en début de script.
 
-Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-available
+Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-available.
 
-Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script est capable de detecter s'il s'agit d'un lien symbolique ou pas et ne supprimera que les liens symboliques
+Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script est capable de detecter s'il s'agit d'un lien symbolique ou pas et ne supprimera que les liens symboliques.
+
