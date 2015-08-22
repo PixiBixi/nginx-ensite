@@ -25,6 +25,6 @@ A chaque fois que vous activez ou désactivez un site, un redémarrage de nginx 
 
 Si vous utilisez systemd, vous devrez probablement changer la variable SERVICE en début de script
 
-Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-disabled
+Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-available
 
 Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script ne le supprimera pas et détectera l'utilisation de lien symbolique/ou pas, et vous indique lorsque qu'il s'agit d'un fichier, et non d'un lien symbolique
