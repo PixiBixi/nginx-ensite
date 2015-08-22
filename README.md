@@ -1,6 +1,6 @@
 # nginx-ensite
 
-Ce script à pour but de faire un equivalent à a2ensite de nginx.
+Ce script a pour but de faire un equivalent à a2ensite de nginx.
 
 ## Utilisation
 
