@@ -19,7 +19,7 @@ Je vous conseille également de le renommer sans le .sh, ce qui est plus "propre
 Je veux :
 * Activer mon server block test.conf : "nginx-ensite enable test.conf"
 * Désactiver mon server block test.conf : "nginx-ensite disable test.conf"
-* Connaitre tous mes server blocks : "nginx-ensite list"
+* Lister tous mes server blocks : "nginx-ensite list"
  
 A chaque fois que vous activez ou désactivez un site, un redémarrage de nginx est fait automatiquement
 
