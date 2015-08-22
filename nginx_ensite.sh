@@ -2,9 +2,7 @@
 #
 # COPYRIGHT BXT/PiXELART
 # nGinx_enSite
-# Utilisation -
-# 
-
+# Utilisation : CF README
 
 # CONF #
 NGINX_PATH="/etc/nginx"
