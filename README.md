@@ -4,15 +4,17 @@ Ce script à pour but de faire un equivalent à a2ensite de nginx
 
 ## Utilisation
 
-3 choix son possibles :
+3 choix sont possibles :
 
-* enable : active un server block de nginx
-* disable : desactive un server block de nginx
-* list : list les servers blocks de nginx disponible dans vos dossiers sites-available et sites-enabled
+* enable : Active un server block de nginx
+* disable : Desactive un server block de nginx
+* list : Liste les servers blocks de nginx disponible dans vos dossiers sites-available et sites-enabled
 
-Je vous conseille de mettre directement le script dans un dossier de $PATH afin d'éviter d'écrire bash... à chaque fois.
+Je vous conseille de mettre directement le script dans un dossier de **$PATH** afin d'éviter d'écrire bash... à chaque fois.
 
-Je vous conseille également de le renommer sans le .sh, ce qui est plus "propre" si vous mettez le script dans votre $PATH
+Par défaut, le dossier **/usr/bin** fait partie de la variable $PATH
+
+Je vous conseille également de le renommer sans le .sh, ce qui est plus "propre" si vous mettez le script dans votre **$PATH**
 
 ## Exemples
 
@@ -27,4 +29,4 @@ Si vous utilisez systemd, vous devrez probablement changer la variable SERVICE e
 
 Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-available
 
-Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script ne le supprimera pas et détectera l'utilisation de lien symbolique/ou pas, et vous indique lorsque qu'il s'agit d'un fichier, et non d'un lien symbolique
+Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script est capable de detecter s'il s'agit d'un lien symbolique ou pas et ne supprimera que les liens symboliques
