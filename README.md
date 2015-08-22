@@ -27,7 +27,7 @@ A chaque fois que vous activez ou désactivez un server block un redémarrage de
 
 **Si vous utilisez systemd**, vous devrez probablement changer la variable SERVICE en début de script.
 
-Ce script fonctionne par un système de liens sympboliques entre sites-enabled et sites-available.
+Ce script fonctionne par un système de liens symboliques entre sites-enabled et sites-available.
 
 Si vous avez directement votre fichier dans sites-enabled, et que vous le désactivez par mégarde, pas de panique, le script est capable de detecter s'il s'agit d'un lien symbolique ou pas et ne supprimera que les liens symboliques.
 
