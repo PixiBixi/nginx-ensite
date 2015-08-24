@@ -66,7 +66,7 @@ case $1 in
 				else
 					ln -s "$NGINX_AVAILABLE/$2" "$NGINX_ENABLED/$2"
 					echo -e "${GREEN}${WHITE_BOLD}Block $2 activé"
-					/bin/ln nginx restart &> /dev/null
+					$SERVICE nginx restart &> /dev/null
 					echo -e "${GREEN}${WHITE_BOLD}nGinx redémarré"
 				fi
 			fi
