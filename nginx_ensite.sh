@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# COPYRIGHT BXT/PiXELART
+# Copyright PixiBixi 
 # nGinx_enSite
 # Utilisation : CF README
 
@@ -13,12 +13,12 @@ SERVICE="service"
 # END OF CONF # 
 
 # COLORS #
-WHITE=$(echo "\033[m")
-WHITE_BOLD=$(echo "\033[1m")
-BLUE=$(echo "\033[34m") #Blue
-RED=$(echo "\033[31m")
-YELLOW=$(echo "\033[33m")
-GREEN=$(echo "\033[32m")
+WHITE="\033[m"
+WHITE_BOLD="\033[1m"
+BLUE="\033[34m"
+RED="\033[31m"
+YELLOW="\033[33m"
+GREEN="\033[32m"
 # END OF COLORS #
 
 if [[ $UID != 0 ]]; then
@@ -90,7 +90,7 @@ case $1 in
 					$SERVICE nginx restart
 					echo -e "${GREEN}Redémarrage de nginx"
 				elif [[ -h "$NGINX_ENABLED/$2" ]]; then # Lien symbolique + fichier inexexistant
-					echo -e "${RED}Attention: Fichier "$SITES_AVAILABLE/$2" inexexistant"
+					echo -e "${RED}Attention: Fichier ${SITES_AVAILABLE}/${2} inexexistant"
 					/bin/rm "$NGINX_ENABLED/$2"
 				else
 					echo -e -n "${RED}$NGINX_ENABLED/$2 n'est pas un lien symbolique vers $SITES_AVAILABLE, souhaitez-vous le supprimer ? (YES|NO)"
@@ -113,10 +113,10 @@ case $1 in
 	list )
 		preCheck
 		echo -e "${YELLOW}${WHITE_BOLD} => $NGINX_AVAILABLE${WHITE}"
-		/bin/ls $NGINX_AVAILABLE
+		/bin/ls $NGINX_AVAILABLE 2>/dev/null
 
 		echo -e "${YELLOW}${WHITE_BOLD} => $NGINX_ENABLED${WHITE}"
-		/bin/ls $NGINX_ENABLED
+		/bin/ls $NGINX_ENABLED 2>/dev/null
 		;;
 
 	* )
