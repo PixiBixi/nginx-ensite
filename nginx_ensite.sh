@@ -1,128 +1,304 @@
 #!/bin/bash
 #
-# Copyright PixiBixi 
+# Copyright PixiBixi
 # nGinx_enSite
-# Utilisation : CF README
+# Équivalent de a2ensite/a2dissite pour nginx
+#
+
+set -euo pipefail
 
 # CONF #
 NGINX_PATH="/etc/nginx"
 NGINX_AVAILABLE="$NGINX_PATH/sites-available"
 NGINX_ENABLED="$NGINX_PATH/sites-enabled"
 NAME=${0##*/}
-SERVICE="service"
-# END OF CONF # 
+VERSION="2.0.0"
+# END OF CONF #
 
 # COLORS #
-WHITE="\033[m"
-WHITE_BOLD="\033[1m"
-BLUE="\033[34m"
-RED="\033[31m"
-YELLOW="\033[33m"
-GREEN="\033[32m"
-CEND="\033[0m"
+if [[ -t 1 ]]; then
+	BOLD="\033[1m"
+	RED="\033[31m"
+	GREEN="\033[32m"
+	YELLOW="\033[33m"
+	BLUE="\033[34m"
+	CEND="\033[0m"
+else
+	BOLD=""
+	RED=""
+	GREEN=""
+	YELLOW=""
+	BLUE=""
+	CEND=""
+fi
 # END OF COLORS #
 
-if [[ $UID != 0 ]]; then
-	echo -e "${RED}${WHITE_BOLD}$NAME doit être exécuté en root${CEND}"
-	exit 1;
-fi
-
-function preCheck(){
-	if [[ ! -d $NGINX_AVAILABLE ]]; then
-		echo -e "${RED}${WHITE_BOLD}$NGINX_AVAILABLE inexistant${CEND}"
-	fi
-
-	if [[ ! -d $NGINX_ENABLED ]]; then
-		echo -e "${RED}${WHITE_BOLD}$NGINX_ENABLED inexistant${CEND}"
-	fi
-
-	if ! [[ $(dpkg -s nginx | grep Status ) =~ "Status: install ok installed" ]]  &> /dev/null ; then
-		echo -e "${RED}${WHITE_BOLD}nGinx n'est pas installé${CEND}"
+# Détection du système d'init
+detect_service_cmd() {
+	if command -v systemctl &>/dev/null; then
+		echo "systemctl"
+	elif command -v service &>/dev/null; then
+		echo "service"
+	else
+		echo ""
 	fi
 }
 
-case $1 in
-	enable )
-		preCheck
-			# Si Argument
-			if [[ -z $2 ]]; then
-				echo -e "${RED}${WHITE_BOLD}Utilisation : $NAME enable nginx_block${CEND}"
-				exit 1
-			fi
-			# Si fichier inexistant $SITES_AVAILABLE
-			if [[ ! -f "$NGINX_AVAILABLE/$2" ]]; then
-				echo -e "${RED}${WHITE_BOLD}Fichier $2 inexistant dans ${NGINX_AVAILABLE}${CEND}"
-				exit 1
-			# Si fichier existant $SITES_ENABLED
-			elif [[ -f "$NGINX_ENABLED/$2" ]]; then
-                echo -e "${RED}${WHITE_BOLD}Fichier $2 déjà activé${CEND}"
-				exit 1
-			# Sinon
+SERVICE_CMD=$(detect_service_cmd)
+
+# Fonctions utilitaires
+msg_error() {
+	echo -e "${RED}${BOLD}$1${CEND}" >&2
+}
+
+msg_success() {
+	echo -e "${GREEN}${BOLD}$1${CEND}"
+}
+
+msg_info() {
+	echo -e "${YELLOW}${BOLD}$1${CEND}"
+}
+
+# Vérification des prérequis
+preCheck() {
+	local errors=0
+
+	if [[ ! -d "$NGINX_AVAILABLE" ]]; then
+		msg_error "$NGINX_AVAILABLE inexistant"
+		errors=$((errors + 1))
+	fi
+
+	if [[ ! -d "$NGINX_ENABLED" ]]; then
+		msg_error "$NGINX_ENABLED inexistant"
+		errors=$((errors + 1))
+	fi
+
+	if ! command -v nginx &>/dev/null; then
+		msg_error "nginx n'est pas installé ou n'est pas dans le PATH"
+		errors=$((errors + 1))
+	fi
+
+	if [[ $errors -gt 0 ]]; then
+		exit 1
+	fi
+}
+
+# Test de la configuration nginx et reload
+nginx_reload() {
+	echo -n "Test de la configuration nginx... "
+	if nginx -t &>/dev/null; then
+		msg_success "OK"
+	else
+		msg_error "ERREUR"
+		msg_error "La configuration nginx est invalide :"
+		nginx -t 2>&1 | while read -r line; do
+			msg_error "  $line"
+		done
+		msg_error "Le reload n'a pas été effectué. Corrigez la configuration."
+		exit 1
+	fi
+
+	if [[ "$SERVICE_CMD" == "systemctl" ]]; then
+		systemctl reload nginx
+	elif [[ "$SERVICE_CMD" == "service" ]]; then
+		service nginx reload
+	else
+		nginx -s reload
+	fi
+	msg_success "nginx rechargé"
+}
+
+# Activer un ou plusieurs sites
+do_enable() {
+	local site="$1"
+
+	if [[ ! -f "$NGINX_AVAILABLE/$site" ]]; then
+		msg_error "Fichier $site inexistant dans $NGINX_AVAILABLE"
+		return 1
+	fi
+
+	if [[ -e "$NGINX_ENABLED/$site" ]]; then
+		msg_info "Fichier $site déjà activé, ignoré"
+		return 0
+	fi
+
+	ln -s "$NGINX_AVAILABLE/$site" "$NGINX_ENABLED/$site"
+	msg_success "Site $site activé"
+}
+
+# Désactiver un ou plusieurs sites
+do_disable() {
+	local site="$1"
+
+	if [[ ! -e "$NGINX_ENABLED/$site" ]]; then
+		msg_error "Fichier $site inexistant dans $NGINX_ENABLED"
+		return 1
+	fi
+
+	if [[ -L "$NGINX_ENABLED/$site" ]]; then
+		# C'est un lien symbolique
+		if [[ ! -e "$NGINX_AVAILABLE/$site" ]]; then
+			msg_info "Attention : $NGINX_AVAILABLE/$site n'existe plus (lien symbolique cassé)"
+		fi
+		/bin/rm "$NGINX_ENABLED/$site"
+		msg_success "Site $site désactivé"
+	else
+		# Ce n'est PAS un lien symbolique
+		echo -en "${RED}${BOLD}$NGINX_ENABLED/$site n'est pas un lien symbolique. Supprimer ? (oui/non) ${CEND}"
+		read -r choice
+		if [[ "$choice" =~ ^(oui|o|yes|y)$ ]]; then
+			/bin/rm "$NGINX_ENABLED/$site"
+			msg_success "$site supprimé"
+		else
+			msg_info "$site non supprimé"
+			return 1
+		fi
+	fi
+}
+
+# Afficher le statut d'un site
+do_status() {
+	local site="$1"
+
+	if [[ ! -f "$NGINX_AVAILABLE/$site" ]]; then
+		msg_error "$site n'existe pas dans $NGINX_AVAILABLE"
+		return 1
+	fi
+
+	if [[ -L "$NGINX_ENABLED/$site" ]]; then
+		msg_success "$site : activé (lien symbolique)"
+	elif [[ -f "$NGINX_ENABLED/$site" ]]; then
+		msg_info "$site : activé (fichier direct, pas un lien symbolique)"
+	else
+		msg_error "$site : désactivé"
+	fi
+}
+
+# Lister les sites
+do_list() {
+	echo -e "${YELLOW}${BOLD}Sites disponibles ($NGINX_AVAILABLE) :${CEND}"
+	local available
+	available=$(/bin/ls "$NGINX_AVAILABLE" 2>/dev/null)
+	if [[ -z "$available" ]]; then
+		echo "  (aucun)"
+	else
+		while IFS= read -r site; do
+			if [[ -e "$NGINX_ENABLED/$site" ]]; then
+				echo -e "  ${GREEN}$site${CEND} [activé]"
 			else
-				echo -e "${GREEN}${WHITE_BOLD}Fichier $2 existant${CEND}"
-				# Si fichier existant $SITES_ENABLED
-				if [[ -f "$NGINX_ENABLED/$2" ]]; then
-					echo -e "${RED}${WHITE_BOLD}Fichier $2 déjà activé${CEND}"
-					exit 1
-				else
-					ln -s "$NGINX_AVAILABLE/$2" "$NGINX_ENABLED/$2"
-					echo -e "${GREEN}${WHITE_BOLD}Block $2 activé${CEND}"
-					$SERVICE nginx restart &> /dev/null
-					echo -e "${GREEN}${WHITE_BOLD}nGinx redémarré${CEND}"
-				fi
+				echo -e "  ${RED}$site${CEND} [désactivé]"
 			fi
-		;;
+		done <<< "$available"
+	fi
 
-	disable )
-		preCheck
-			if [[ -z $2 ]]; then
-				echo -e "${RED}${WHITE_BOLD}Utilisation : $NAME enable nginx_block${CEND}"
-				exit 1
-			fi
-
-			if [[ ! -f "$NGINX_ENABLED/$2" ]]; then
-				echo -e "${RED}${WHITE_BOLD}Fichier $2 inexistant dans ${NGINX_ENABLED}${CEND}"
-				exit 1
-			# Sinon (Si un fichier existe)
+	echo ""
+	echo -e "${YELLOW}${BOLD}Sites activés ($NGINX_ENABLED) :${CEND}"
+	local enabled
+	enabled=$(/bin/ls "$NGINX_ENABLED" 2>/dev/null)
+	if [[ -z "$enabled" ]]; then
+		echo "  (aucun)"
+	else
+		while IFS= read -r site; do
+			if [[ -L "$NGINX_ENABLED/$site" ]]; then
+				echo -e "  ${GREEN}$site${CEND} -> $(readlink "$NGINX_ENABLED/$site")"
 			else
-				if [[ -L "$NGINX_ENABLED/$2" ]]; then # Lien symbolique + fichier existe
-					echo -e "${GREEN}Fichier $NGINX_ENABLED/$2 supprimé${CEND}"
-					/bin/rm "$NGINX_ENABLED/$2"
-					$SERVICE nginx restart
-					echo -e "${GREEN}Redémarrage de nginx${CEND}"
-				elif [[ -h "$NGINX_ENABLED/$2" ]]; then # Lien symbolique + fichier inexexistant
-					echo -e "${RED}Attention: Fichier ${SITES_AVAILABLE}/${2} inexexistant${CEND}"
-					/bin/rm "$NGINX_ENABLED/$2"
-				else
-					echo -e -n "${RED}$NGINX_ENABLED/$2 n'est pas un lien symbolique vers $SITES_AVAILABLE, souhaitez-vous le supprimer ? (YES|NO)${CEND}"
-					read CHOICE_RM
-					if [[ $CHOICE_RM =~ yes ]]; then
-						/bin/rm "$NGINX_ENABLED/$2"
-						echo -e "${GREEN}$NGINX_ENABLED/$2 a été supprimé${CEND}"
-						$SERVICE nginx restart
-						echo -e "${GREEN}Redémarrage de nginx${CEND}"
-					else
-						echo -e "${RED}$NGINX_ENABLED/$2 n'a pas été supprimé${CEND}"
-						exit 1
-					fi
-				fi
+				echo -e "  ${YELLOW}$site${CEND} (fichier direct)"
 			fi
+		done <<< "$enabled"
+	fi
+}
 
+# Affichage de l'aide
+show_help() {
+	echo -e "${BLUE}${BOLD}$NAME${CEND} v$VERSION — Gestion des server blocks nginx"
+	echo ""
+	echo -e "${BOLD}Usage :${CEND}"
+	echo -e "  $NAME enable  <site> [site2 ...]   Active un ou plusieurs server blocks"
+	echo -e "  $NAME disable <site> [site2 ...]   Désactive un ou plusieurs server blocks"
+	echo -e "  $NAME status  <site>               Affiche le statut d'un server block"
+	echo -e "  $NAME list                         Liste tous les server blocks"
+	echo -e "  $NAME --help, -h                   Affiche cette aide"
+	echo -e "  $NAME --version, -v                Affiche la version"
+	echo ""
+	echo -e "${BOLD}Exemples :${CEND}"
+	echo -e "  $NAME enable example.conf"
+	echo -e "  $NAME enable site1.conf site2.conf"
+	echo -e "  $NAME disable example.conf"
+	echo -e "  $NAME status example.conf"
+	echo -e "  $NAME list"
+}
 
-		;;
+# Vérification root
+if [[ $UID -ne 0 ]]; then
+	msg_error "$NAME doit être exécuté en root"
+	exit 1
+fi
 
-	list )
+# Parse des arguments
+case "${1:-}" in
+	enable)
 		preCheck
-		echo -e "${YELLOW}${WHITE_BOLD} => $NGINX_AVAILABLE${WHITE}"
-		/bin/ls $NGINX_AVAILABLE 2>/dev/null
-
-		echo -e "${YELLOW}${WHITE_BOLD} => $NGINX_ENABLED${WHITE}"
-		/bin/ls $NGINX_ENABLED 2>/dev/null
+		shift
+		if [[ $# -eq 0 ]]; then
+			msg_error "Usage : $NAME enable <site> [site2 ...]"
+			exit 1
+		fi
+		has_error=0
+		for site in "$@"; do
+			do_enable "$site" || has_error=1
+		done
+		if [[ $has_error -eq 0 ]]; then
+			nginx_reload
+		else
+			msg_error "Des erreurs sont survenues, le reload n'a pas été effectué"
+			exit 1
+		fi
 		;;
 
-	* )
-		echo -e "${YELLOW}${WHITE_BOLD}Usages possibles :"
-		echo -e "${WHITE_BOLD}${BLUE}enable :${WHITE} enable nginx block${CEND}"
-		echo -e "${WHITE_BOLD}${BLUE}disable :${WHITE} disable nginx block${CEND}"
-		echo -e "${WHITE_BOLD}${BLUE}list :${WHITE} list all nginx blocks${CEND}"
+	disable)
+		preCheck
+		shift
+		if [[ $# -eq 0 ]]; then
+			msg_error "Usage : $NAME disable <site> [site2 ...]"
+			exit 1
+		fi
+		has_error=0
+		for site in "$@"; do
+			do_disable "$site" || has_error=1
+		done
+		if [[ $has_error -eq 0 ]]; then
+			nginx_reload
+		else
+			msg_error "Des erreurs sont survenues, le reload n'a pas été effectué"
+			exit 1
+		fi
+		;;
+
+	status)
+		preCheck
+		shift
+		if [[ $# -eq 0 ]]; then
+			msg_error "Usage : $NAME status <site>"
+			exit 1
+		fi
+		do_status "$1"
+		;;
+
+	list)
+		preCheck
+		do_list
+		;;
+
+	--help | -h | help)
+		show_help
+		;;
+
+	--version | -v)
+		echo "$NAME v$VERSION"
+		;;
+
+	*)
+		show_help
+		exit 1
+		;;
 esac
